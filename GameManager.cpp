@@ -2,7 +2,6 @@
 #include <Arduino.h>
 
 // Définitions des variables globales
-// Ces variables seront gérées par le GameManager
 extern int BOMB_GAME_TIME_SECONDS;
 extern char bombCode[5];
 const int WIRE_SEQUENCE[3] = {1, 3, 2};
@@ -11,9 +10,12 @@ int lastBeepTime = 0;
 char codeBuffer[5] = "";
 int bufferIndex = 0;
 
-// Variables de gestion du temps (temps restant)
 unsigned long startTime = 0;
 unsigned long elapsedTime = 0;
+unsigned long lastKeyPressTime = 0;
+
+// Déclaration de la variable 'vipMode' comme externe
+extern bool vipMode;
 
 GameManager::GameManager(InputManager& input, DisplayManager& display, WireManager& wires, BuzzerManager& buzzer, MotionManager& motion)
     : inputManager(input), displayManager(display), wireManager(wires), buzzerManager(buzzer), motionManager(motion) {
@@ -25,8 +27,6 @@ void GameManager::setup() {
     displayManager.showMessage("En attente de config", 0);
 }
 
-extern bool vipMode; // Déclarez la variable globale ici
-
 void GameManager::loop() {
     char key = inputManager.getKey();
 
@@ -36,12 +36,12 @@ void GameManager::loop() {
                 if (vipMode) {
                     currentState = VIP_MODE;
                     startTime = millis();
-                    displayManager.showMessage("MODE VIP - VIE : 100", 0);
-                    vipCurrentHealth = VIP_HEALTH_POINTS; // Réinitialise les points de vie
+                    displayManager.showMessage("MODE VIP !", 0);
+                    vipCurrentHealth = VIP_HEALTH_POINTS;
                 } else {
-                    currentState = GAME_MODE; // Mode normal
+                    currentState = GAME_MODE;
                     startTime = millis();
-                    displayManager.showMessage("Temps restant:", 0);
+                    displayManager.showMessage("BOMBE ACTIVEE", 0);
                 }
             }
         }
@@ -59,21 +59,24 @@ void GameManager::loop() {
                 return;
             }
 
+            // Affiche le temps et le code sur l'écran
+            displayManager.showTimeAndCode(remainingTime, codeBuffer);
+
             // Logique de désamorçage par les fils
             int cutWire = wireManager.checkCutWire();
             if (cutWire != 0) {
                 if (cutWire == WIRE_SEQUENCE[wiresCutCount]) {
                     wiresCutCount++;
-                    displayManager.showMessage("Fil correct!", 0);
+                    displayManager.showMessage("Fil correct!", 3);
                     delay(1000);
-                    displayManager.showMessage("                ", 0);
+                    displayManager.showMessage("                    ", 3);
 
                     if (wiresCutCount >= 3) {
                         currentState = WIN_MODE;
                     }
                 } else {
                     currentState = LOSE_MODE;
-                    displayManager.showMessage("Mauvais fil!", 0);
+                    displayManager.showMessage("Mauvais fil!", 3);
                     delay(1000);
                     displayManager.showMessage("BOOM !!!", 0);
                 }
@@ -86,10 +89,10 @@ void GameManager::loop() {
                         currentState = WIN_MODE;
                         displayManager.showMessage("BOMBE DESAMORCEE!", 0);
                     } else {
-                        startTime -= 30 * 1000;
-                        displayManager.showMessage("CODE FAUX !", 0);
+                        startTime += 30 * 1000;
+                        displayManager.showMessage("CODE FAUX !", 3);
                         delay(1000);
-                        displayManager.showMessage("", 0);
+                        displayManager.showMessage(" ", 3);
                     }
                     bufferIndex = 0;
                     memset(codeBuffer, 0, sizeof(codeBuffer));
@@ -104,23 +107,18 @@ void GameManager::loop() {
                     codeBuffer[bufferIndex] = 0;
                 }
             }
-
-            // Affiche le temps et le code
-            int minutes = remainingTime / 60;
-            int seconds = remainingTime % 60;
-            displayManager.showTimeAndCode(remainingTime, codeBuffer);
-
+            
             // Bip toutes les 5 secondes
-            if (seconds % 5 == 0 && seconds != lastBeepTime) {
+            if (remainingTime % 5 == 0 && remainingTime != lastBeepTime) {
                 buzzerManager.playBeep();
-                lastBeepTime = seconds;
+                lastBeepTime = remainingTime;
             }
         }
         break;
+
         case VIP_MODE: {
-            // Logique du mode VIP
             elapsedTime = (millis() - startTime) / 1000;
-            int remainingTime = VIP_GAME_TIME - elapsedTime; // Utilise le temps du mode VIP
+            int remainingTime = VIP_GAME_TIME - elapsedTime;
 
             // Vérifie les conditions de défaite
             if (remainingTime <= 0 || vipCurrentHealth <= 0) {
@@ -132,46 +130,58 @@ void GameManager::loop() {
 
             // Détection des chocs
             if (motionManager.checkVibration()) {
-                vipCurrentHealth -= 10; // Réduit la vie de 10 points par choc
+                vipCurrentHealth -= 10;
                 displayManager.showMessage("CHOC DETECTE !", 3);
                 delay(500);
             }
 
             // Affiche la vie et le temps restant
             char healthMessage[21];
-            sprintf(healthMessage, "VIE RESTANTE: %d", vipCurrentHealth);
+            sprintf(healthMessage, "VIE: %d", vipCurrentHealth);
             displayManager.showMessage(healthMessage, 1);
 
             char timeMessage[21];
             sprintf(timeMessage, "Temps: %02d:%02d", remainingTime / 60, remainingTime % 60);
             displayManager.showMessage(timeMessage, 2);
 
-            // Gestion des fils
+            // Gère la logique des fils
             int cutWire = wireManager.checkCutWire();
             if (cutWire != 0) {
-                // ... (même logique que le mode normal)
+                 if (cutWire == WIRE_SEQUENCE[wiresCutCount]) {
+                    wiresCutCount++;
+                    displayManager.showMessage("Fil correct!", 3);
+                    delay(1000);
+                    displayManager.showMessage("                    ", 3);
+
+                    if (wiresCutCount >= 3) {
+                        currentState = WIN_MODE;
+                    }
+                } else {
+                    currentState = LOSE_MODE;
+                    displayManager.showMessage("Mauvais fil!", 3);
+                    delay(1000);
+                    displayManager.showMessage("BOOM !!!", 0);
+                }
             }
             
-            // Gestion du clavier : pas de code possible, mais la pénalité reste
+            // Gère le clavier
             if (key != NO_KEY) {
                 if (key == '#') {
-                    // Aucune action si le code est entré
-                    startTime -= VIP_PENALTY * 1000; // Pénalité de 60 secondes pour toute tentative de code
-                    displayManager.showMessage("Tentative de code, penalite!", 0);
+                    startTime += VIP_PENALTY * 1000; 
+                    displayManager.showMessage("Penalite : +60s !", 3);
                     delay(2000);
+                    displayManager.showMessage(" ", 3);
                 }
             }
 
-            // Affiche le temps et le code (pas de code dans ce mode)
-            displayManager.showTimeAndCode(remainingTime, "");
-            
-            // Bips sonores plus fréquents en mode VIP (par ex, toutes les 2 secondes)
+            // Bips sonores plus fréquents en mode VIP
             if (remainingTime % 2 == 0 && remainingTime != lastBeepTime) {
                 buzzerManager.playBeep();
                 lastBeepTime = remainingTime;
             }
         }
         break;
+
         case WIN_MODE: {
             displayManager.showMessage("BOMBE DESAMORCEE!", 0);
             buzzerManager.playDefusal();

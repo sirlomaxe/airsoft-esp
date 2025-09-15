@@ -7,11 +7,15 @@
 #include <WiFi.h>
 #include <WebServer.h>
 
+// Déclaration et définition des variables globales
+int BOMB_GAME_TIME_SECONDS = 0;
+char bombCode[5] = "";
+bool vipMode = false; // Ne pas déclarer deux fois !
 // Déclarations des managers
 byte PIN_ROWS[4] = {27, 26, 25, 33};
 byte PIN_COLS[4] = {32, 14, 12, 13};
 InputManager inputManager(PIN_ROWS, PIN_COLS);
-bool vipMode = false;
+
 
 const int WIRE_PINS[3] = {15, 4, 16};
 WireManager wireManager(WIRE_PINS, 3);
@@ -29,11 +33,6 @@ MotionManager motionManager;
 
 // Création du serveur Web sur le port 80
 WebServer server(80);
-
-// Déclarations des variables du jeu
-int BOMB_GAME_TIME_SECONDS = 0;
-char bombCode[5] = "";
-
 
 // Le GameManager qui gère la logique principale
 // Il peut maintenant utiliser motionManager car il est déjà déclaré.
