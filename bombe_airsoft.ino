@@ -7,15 +7,16 @@
 #include <WiFi.h>
 #include <WebServer.h>
 
-// Déclaration et définition des variables globales
+// Declare and DEFINES global variables HERE ONCE
 int BOMB_GAME_TIME_SECONDS = 0;
 char bombCode[5] = "";
-bool vipMode = false; // Ne pas déclarer deux fois !
-// Déclarations des managers
+bool vipMode = false; // <-- THIS IS THE DEFINITION
+volatile bool startGameFromWeb = false;
+
+// Other manager declarations...
 byte PIN_ROWS[4] = {27, 26, 25, 33};
 byte PIN_COLS[4] = {32, 14, 12, 13};
 InputManager inputManager(PIN_ROWS, PIN_COLS);
-
 
 const int WIRE_PINS[3] = {15, 4, 16};
 WireManager wireManager(WIRE_PINS, 3);
@@ -28,23 +29,35 @@ DisplayManager displayManager(LCD_ADDRESS, LCD_COLS, LCD_ROWS);
 const int BUZZER_PIN = 17;
 BuzzerManager buzzerManager(BUZZER_PIN);
 
-// Déclaration du MotionManager AVANT le GameManager
-MotionManager motionManager;
+// Instanciation du MotionManager avec le nouveau constructeur
+const int VIBRATION_PIN = 23;
+MotionManager motionManager(VIBRATION_PIN);
 
-// Création du serveur Web sur le port 80
+// Create the web server on port 80
 WebServer server(80);
 
-// Le GameManager qui gère la logique principale
-// Il peut maintenant utiliser motionManager car il est déjà déclaré.
+// The GameManager that handles the main logic
 GameManager gameManager(inputManager, displayManager, wireManager, buzzerManager, motionManager);
 
-// Déclaration de la fonction qui gérera les requêtes HTTP
+// Function declarations for web server handlers
 void handleRoot();
 void handleConfiguration();
 
 void setup() {
     Serial.begin(115200);
+    // Initialisation du bus I2C EN PREMIER
+    //Wire.begin(21, 22);
     displayManager.setup();
+    // --- ÉCRAN DE CHARGEMENT ---
+    displayManager.showMessage("Chargement", 0);
+    displayManager.showMessage("Bombe Airsoft", 1);    
+    // Animation de points qui clignotent
+    for (int i = 0; i < 4; i++) {
+        displayManager.showMessage(".", 2, i * 2);
+        delay(600);
+    }
+    displayManager.clear(); // Efface l'écran une fois l'animation terminée
+    // --- FIN DE L'ÉCRAN DE CHARGEMENT ---
     displayManager.showMessage("Demarrage Wi-Fi...", 0);
     
     // Initialisation du Wi-Fi en mode point d'accès
@@ -55,16 +68,20 @@ void setup() {
     Serial.print("Serveur IP: ");
     Serial.println(IP);
 
-    // Initialisation du serveur Web
+    // Démarrer le serveur Web après que le WiFi est opérationnel
     server.on("/", handleRoot);
     server.on("/config", handleConfiguration);
+    server.on("/start", handleStart); // Nouvelle route pour démarrer le jeu
     server.begin();
-
-    // Initialisation des managers
+    //scanI2C();
+    // Initialisation des managers après le serveur Web
+    motionManager.setup(); 
     wireManager.setup();
     buzzerManager.setup();
-    motionManager.setup();
+    
+    // L'initialisation du GameManager se fait en dernier
     gameManager.setup();
+    
 }
 
 void loop() {
@@ -72,7 +89,6 @@ void loop() {
     gameManager.loop();
 }
 
-// Fonctions de gestion du serveur web
 void handleRoot() {
     String html = "<html><head><title>Configuration de la bombe</title></head>";
     html += "<body><h1>Configuration de la bombe</h1>";
@@ -89,9 +105,9 @@ void handleConfiguration() {
     if (server.hasArg("time")) {
         BOMB_GAME_TIME_SECONDS = server.arg("time").toInt();
     }
-    if (server.hasArg("code")) {
+    if (server.arg("code").length() > 0) { // Check if code argument is present and not empty
         String codeStr = server.arg("code");
-        codeStr.toCharArray(bombCode, codeStr.length() + 1);
+        codeStr.toCharArray(bombCode, sizeof(bombCode)); // Use sizeof for safety
     }
     
     if (server.hasArg("vip_mode")) {
@@ -101,4 +117,38 @@ void handleConfiguration() {
     }
     
     server.send(200, "text/plain", "Configuration terminee. La bombe est prete.");
+}
+void handleStart() {
+    startGameFromWeb = true;
+    server.send(200, "text/plain", "Jeu demarre depuis le web!");
+}
+void scanI2C() {
+  byte error, address;
+  int nDevices;
+
+  Serial.println("Scanning I2C bus...");
+
+  nDevices = 0;
+  for (address = 1; address < 127; address++ ) {
+    Wire.beginTransmission(address);
+    error = Wire.endTransmission();
+
+    if (error == 0) {
+      Serial.print("I2C device found at address 0x");
+      if (address < 16)
+        Serial.print("0");
+      Serial.print(address, HEX);
+      Serial.println("  !");
+      nDevices++;
+    } else if (error == 4) {
+      Serial.print("Unknow error at address 0x");
+      if (address < 16)
+        Serial.print("0");
+      Serial.println(address, HEX);
+    }
+  }
+  if (nDevices == 0)
+    Serial.println("No I2C devices found\n");
+  else
+    Serial.println("done\n");
 }

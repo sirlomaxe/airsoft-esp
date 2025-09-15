@@ -10,7 +10,9 @@
 extern bool vipMode;
 
 enum BombState {
-    CONFIG_MODE,
+    IDLE_MODE,
+    MENU_TIME_MODE,
+    MENU_CODE_MODE,
     STANDBY_MODE,
     GAME_MODE,
     VIP_MODE,
@@ -32,9 +34,13 @@ private:
     MotionManager& motionManager;
     BombState currentState;
     
-    // Ajout des variables manquantes
-    unsigned long lastKeyPressTime = 0; // Ajout de cette ligne
-    const int VIP_PENALTY = 60; // Ajout de cette ligne
+    unsigned long lastKeyPressTime = 0;
+    const int VIP_PENALTY = 60;
+    
+    char tempTimeBuffer[5] = "";
+    char tempCodeBuffer[5] = "";
+    int tempBufferIndex = 0;
+    int timeEntered = 0; 
     
     const int VIP_GAME_TIME = 180;
     const int VIP_HEALTH_POINTS = 100;

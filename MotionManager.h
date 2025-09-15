@@ -1,19 +1,17 @@
 #ifndef MOTION_MANAGER_H
 #define MOTION_MANAGER_H
 
-#include <Adafruit_MMA8451.h>
-#include <Adafruit_Sensor.h>
-#include <Wire.h>
+#include <Arduino.h>
 
 class MotionManager {
 public:
-    MotionManager();
+    MotionManager(int sensorPin);
     void setup();
     bool checkVibration();
 
 private:
-    Adafruit_MMA8451 mma;
-    float previousAcceleration;
+    int vibrationPin;
+    bool lastState = false;
 };
 
 #endif

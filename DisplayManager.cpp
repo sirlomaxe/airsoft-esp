@@ -16,7 +16,16 @@ void DisplayManager::showMessage(const char* message, int row) {
     lcd.setCursor(0, row);
     lcd.print(message);
 }
+// Implémentation de la nouvelle fonction showMessage avec 3 arguments
+void DisplayManager::showMessage(const char* message, int row, int col) {
+    lcd.setCursor(col, row);
+    lcd.print(message);
+}
 
+// Implémentation de la fonction pour effacer l'écran
+void DisplayManager::clear() {
+    lcd.clear();
+}
 void DisplayManager::showTimeAndCode(int remainingTime, const char* codeBuffer) {
     // Affiche le temps sur la ligne 1
     int minutes = remainingTime / 60;
@@ -35,4 +44,8 @@ void DisplayManager::showWireStatus(int wire1, int wire2, int wire3) {
     char wireStatus[21];
     sprintf(wireStatus, "Fil: %d %d %d", wire1, wire2, wire3);
     showMessage(wireStatus, 3);
+}
+void DisplayManager::clearRow(int row) {
+    lcd.setCursor(0, row);
+    lcd.print("                    ");
 }
