@@ -2,8 +2,8 @@
 #include <LiquidCrystal_I2C.h>
 #include <Arduino.h>
 
-DisplayManager::DisplayManager(int lcdAddress, int lcdCols, int lcdRows)
-    : lcd(lcdAddress, lcdCols, lcdRows) {}
+DisplayManager::DisplayManager(int lcdCols, int lcdRows, int i2cAddress)
+    : lcd(i2cAddress, lcdCols, lcdRows) {}
 
 void DisplayManager::setup() {
     lcd.init();
@@ -12,40 +12,40 @@ void DisplayManager::setup() {
 
 void DisplayManager::showMessage(const char* message, int row) {
     lcd.setCursor(0, row);
-    lcd.print("                    "); // Efface la ligne en affichant des espaces
+    lcd.print("                    "); // Efface la ligne
     lcd.setCursor(0, row);
     lcd.print(message);
 }
-// Implémentation de la nouvelle fonction showMessage avec 3 arguments
+
 void DisplayManager::showMessage(const char* message, int row, int col) {
     lcd.setCursor(col, row);
     lcd.print(message);
 }
 
-// Implémentation de la fonction pour effacer l'écran
+// Implémentation pour les objets String
+void DisplayManager::showMessage(String message, int row) {
+    showMessage(message.c_str(), row); // Convertit String en const char*
+}
+
+void DisplayManager::showMessage(String message, int row, int col) {
+    showMessage(message.c_str(), row, col); // Convertit String en const char*
+}
+
 void DisplayManager::clear() {
     lcd.clear();
 }
-void DisplayManager::showTimeAndCode(int remainingTime, const char* codeBuffer) {
-    // Affiche le temps sur la ligne 1
-    int minutes = remainingTime / 60;
-    int seconds = remainingTime % 60;
-    char timeBuffer[21];
-    sprintf(timeBuffer, "Temps: %02d:%02d", minutes, seconds);
-    showMessage(timeBuffer, 1);
-    
-    // Affiche le code sur la ligne 2
-    char codeDisplay[21];
-    sprintf(codeDisplay, "Code: %s", codeBuffer);
-    showMessage(codeDisplay, 2);
-}
 
-void DisplayManager::showWireStatus(int wire1, int wire2, int wire3) {
-    char wireStatus[21];
-    sprintf(wireStatus, "Fil: %d %d %d", wire1, wire2, wire3);
-    showMessage(wireStatus, 3);
-}
 void DisplayManager::clearRow(int row) {
     lcd.setCursor(0, row);
     lcd.print("                    ");
+}
+
+void DisplayManager::showTimeAndCode(int remainingTime, const char* codeBuffer) {
+    char timeMessage[21];
+    sprintf(timeMessage, "Temps: %02d:%02d", remainingTime / 60, remainingTime % 60);
+    showMessage(timeMessage, 0);
+
+    char codeMessage[21];
+    sprintf(codeMessage, "Code: %s", codeBuffer);
+    showMessage(codeMessage, 1);
 }

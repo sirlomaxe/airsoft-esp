@@ -2,6 +2,8 @@
 #define WIRE_MANAGER_H
 
 #include <Arduino.h>
+// Inclure InputManager ici pour pouvoir accéder à ses broches et méthodes
+#include "InputManager.h"
 
 class WireManager {
 public:

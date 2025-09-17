@@ -4,27 +4,38 @@ BuzzerManager::BuzzerManager(int buzzerPin) : buzzerPin(buzzerPin) {}
 
 void BuzzerManager::setup() {
     pinMode(buzzerPin, OUTPUT);
+    digitalWrite(buzzerPin, LOW);
 }
 
-void BuzzerManager::playBeep() {
+void BuzzerManager::startBeeping(int duration) {
+    if (duration > 0) {
+        digitalWrite(buzzerPin, HIGH);
+        beepEndTime = millis() + duration;
+    }
+}
+
+void BuzzerManager::playSuccess() {
+    // Exemple de son de succès (court et aigu)
+    tone(buzzerPin, 2000, 200); // Fréquence 2000 Hz pendant 200 ms
+    delay(200); // S'assurer que le son a le temps de jouer avant de passer à autre chose
+    digitalWrite(buzzerPin, LOW);
+}
+
+void BuzzerManager::playHit() {
+    // Exemple de son de "hit" (court et grave)
+    tone(buzzerPin, 500, 150); // Fréquence 500 Hz pendant 150 ms
+    delay(150);
+    digitalWrite(buzzerPin, LOW);
+}
+
+void BuzzerManager::playDominationSwitch() {
+    // Son pour indiquer un changement d'équipe (modulé)
     tone(buzzerPin, 1000, 100);
+    delay(100);
+    tone(buzzerPin, 1200, 100);
+    delay(100);
+    digitalWrite(buzzerPin, LOW);
 }
 
-void BuzzerManager::playExplosion() {
-    // Joue une explosion, un son plus complexe
-    tone(buzzerPin, 200, 500);
-    delay(500);
-    tone(buzzerPin, 150, 500);
-    delay(500);
-    noTone(buzzerPin);
-}
-
-void BuzzerManager::playDefusal() {
-    // Joue un son de désamorçage réussi
-    tone(buzzerPin, 500, 200);
-    delay(200);
-    tone(buzzerPin, 800, 200);
-    delay(200);
-    tone(buzzerPin, 1200, 400);
-    noTone(buzzerPin);
-}
+// Dans la loop() principale de votre GameManager, vous devrez gérer la fin du bip
+// quand beepEndTime est dépassé.
